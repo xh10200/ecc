@@ -1,0 +1,9 @@
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Read and follow the repo-local role spec at `agents/python-reviewer.md` before taking action.
+Treat that markdown file as the authoritative definition of this role's scope, workflow, priorities, and output style.
+Stay within the role's stated scope. If the parent agent asks for work outside that scope, explain the mismatch briefly and do the closest valid subset.
+"""
