@@ -6,7 +6,7 @@ Everything Claude Code (ECC) eklentisi için yaygın sorunlar ve çözümler.
 
 - [Bellek ve Context Sorunları](#bellek-ve-context-sorunları)
 - [Ajan Harness Hataları](#ajan-harness-hataları)
-- [Hook ve İş Akışı Hataları](#hook-ve-iş-akışı-hataları)
+- [Hook ve İş Akışı Hataları](#hook-ve-is-akisi-hatalari)
 - [Kurulum ve Yapılandırma](#kurulum-ve-yapılandırma)
 - [Performans Sorunları](#performans-sorunları)
 - [Yaygın Hata Mesajları](#yaygın-hata-mesajları)
@@ -155,6 +155,8 @@ echo $PATH
 ```
 
 ---
+
+<a id="hook-ve-is-akisi-hatalari"></a>
 
 ## Hook ve İş Akışı Hataları
 

@@ -127,6 +127,10 @@ config_file = "agents/build-error-resolver.toml"
 description = "Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes."
 config_file = "agents/code-reviewer.toml"
 
+[agents.docs_researcher]
+description = "Documentation and API verification specialist for release notes, SDK docs, and upstream reference checks before docs-sensitive changes ship."
+config_file = "agents/docs-researcher.toml"
+
 [agents.database-reviewer]
 description = "PostgreSQL database specialist for query optimization, schema design, security, and performance. Use PROACTIVELY when writing SQL, creating migrations, designing schemas, or troubleshooting database performance."
 config_file = "agents/database-reviewer.toml"
