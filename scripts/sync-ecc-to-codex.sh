@@ -12,10 +12,12 @@ set -euo pipefail
 
 MODE="apply"
 UPDATE_MCP=""
+ENABLE_MCP="0"
 for arg in "$@"; do
   case "$arg" in
     --dry-run)    MODE="dry-run" ;;
-    --update-mcp) UPDATE_MCP="--update-mcp" ;;
+    --with-mcp)   ENABLE_MCP="1" ;;
+    --update-mcp) UPDATE_MCP="--update-mcp"; ENABLE_MCP="1" ;;
   esac
 done
 
@@ -492,11 +494,15 @@ if [[ "$MODE" == "apply" ]]; then
   sort -u "$extension_manifest" -o "$extension_manifest"
 fi
 
-log "Merging ECC MCP servers into $CONFIG_FILE (add-only, preserving user config)"
-if [[ "$MODE" == "dry-run" ]]; then
-  node "$MCP_MERGE_SCRIPT" "$CONFIG_FILE" --dry-run $UPDATE_MCP
+if [[ "$ENABLE_MCP" == "1" ]]; then
+  log "Merging ECC MCP servers into $CONFIG_FILE (add-only, preserving user config)"
+  if [[ "$MODE" == "dry-run" ]]; then
+    node "$MCP_MERGE_SCRIPT" "$CONFIG_FILE" --dry-run $UPDATE_MCP
+  else
+    node "$MCP_MERGE_SCRIPT" "$CONFIG_FILE" $UPDATE_MCP
+  fi
 else
-  node "$MCP_MERGE_SCRIPT" "$CONFIG_FILE" $UPDATE_MCP
+  log "Skipping ECC MCP sync (disabled by default; pass --with-mcp to enable)"
 fi
 
 log "Installing global git safety hooks"
@@ -521,6 +527,7 @@ else
   HOME="$HOME" \
   CODEX_HOME="$CODEX_HOME" \
   AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
+  ECC_EXPECT_MCP_SERVERS="$ENABLE_MCP" \
   ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
     "$SANITY_CHECKER"
 fi

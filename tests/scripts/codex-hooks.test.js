@@ -94,7 +94,7 @@ if (os.platform() === 'win32') {
 else failed++;
 
 if (
-  test('sync installs the missing Codex baseline and accepts the legacy context7 MCP section', () => {
+  test('sync installs the missing Codex baseline and accepts the legacy context7 MCP section when MCP sync is enabled', () => {
     const homeDir = createTempDir('codex-sync-home-');
     const codexDir = path.join(homeDir, '.codex');
     const configPath = path.join(codexDir, 'config.toml');
@@ -127,7 +127,7 @@ if (
       fs.mkdirSync(codexDir, { recursive: true });
       fs.writeFileSync(configPath, config);
 
-      const syncResult = runBash(syncScript, ['--update-mcp'], makeHermeticCodexEnv(homeDir, codexDir));
+      const syncResult = runBash(syncScript, ['--with-mcp', '--update-mcp'], makeHermeticCodexEnv(homeDir, codexDir));
       assert.strictEqual(syncResult.status, 0, `${syncResult.stdout}\n${syncResult.stderr}`);
 
       const syncedAgents = fs.readFileSync(agentsPath, 'utf8');
@@ -150,7 +150,6 @@ if (
       assert.strictEqual(parsedConfig.agents.max_depth, 1);
       assert.strictEqual(parsedConfig.agents.explorer.config_file, 'agents/explorer.toml');
       assert.strictEqual(parsedConfig.agents.reviewer.config_file, 'agents/reviewer.toml');
-      assert.strictEqual(parsedConfig.agents.docs_researcher.config_file, 'agents/docs-researcher.toml');
       assert.ok(parsedConfig.mcp_servers.exa);
       assert.ok(parsedConfig.mcp_servers.github);
       assert.ok(parsedConfig.mcp_servers.memory);
@@ -169,7 +168,7 @@ if (
 else failed++;
 
 if (
-  test('sync adds parent-table keys when the target only declares an implicit parent table', () => {
+  test('sync adds parent-table keys when the target only declares an implicit parent table and leaves MCP untouched by default', () => {
     const homeDir = createTempDir('codex-sync-implicit-parent-home-');
     const codexDir = path.join(homeDir, '.codex');
     const configPath = path.join(codexDir, 'config.toml');
@@ -192,6 +191,7 @@ if (
       assert.strictEqual(parsedConfig.agents.max_threads, 6);
       assert.strictEqual(parsedConfig.agents.max_depth, 1);
       assert.strictEqual(parsedConfig.agents.explorer.config_file, 'agents/explorer.toml');
+      assert.ok(!parsedConfig.mcp_servers, 'sync should not add MCP servers unless explicitly enabled');
     } finally {
       cleanup(homeDir);
     }

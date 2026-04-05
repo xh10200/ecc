@@ -83,6 +83,11 @@ function runTests() {
     assert.ok(source.includes('node - "$file"'), 'extract_context7_key should use Node-based parsing');
   })) passed++; else failed++;
 
+  if (test('MCP sync is opt-in via --with-mcp', () => {
+    assert.ok(source.includes('--with-mcp'), 'Expected a --with-mcp flag');
+    assert.ok(source.includes('Skipping ECC MCP sync (disabled by default; pass --with-mcp to enable)'), 'Expected default MCP skip message');
+  })) passed++; else failed++;
+
   console.log(`\nResults: Passed: ${passed}, Failed: ${failed}`);
   process.exit(failed > 0 ? 1 : 0);
 }

@@ -22,6 +22,13 @@ PROMPTS_DIR="$CODEX_HOME/prompts"
 SKILLS_DIR="${AGENTS_HOME:-$HOME/.agents}/skills"
 HOOKS_DIR_EXPECT="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}"
 
+expect_mcp_servers() {
+  case "${ECC_EXPECT_MCP_SERVERS:-1}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 failures=0
 warnings=0
 checks=0
@@ -107,38 +114,42 @@ if [[ -f "$CONFIG_FILE" ]]; then
   check_config_pattern '^\[profiles\.strict\]' "profiles.strict exists"
   check_config_pattern '^\[profiles\.yolo\]' "profiles.yolo exists"
 
-  for section in \
-    'mcp_servers.github' \
-    'mcp_servers.memory' \
-    'mcp_servers.sequential-thinking' \
-    'mcp_servers.context7'
-  do
-    if search_file "^\[$section\]" "$CONFIG_FILE"; then
-      ok "MCP section [$section] exists"
-    else
-      fail "MCP section [$section] missing"
+  if expect_mcp_servers; then
+    for section in \
+      'mcp_servers.github' \
+      'mcp_servers.memory' \
+      'mcp_servers.sequential-thinking' \
+      'mcp_servers.context7'
+    do
+      if search_file "^\[$section\]" "$CONFIG_FILE"; then
+        ok "MCP section [$section] exists"
+      else
+        fail "MCP section [$section] missing"
+      fi
+    done
+
+    has_context7_legacy=0
+    has_context7_current=0
+
+    if search_file '^\[mcp_servers\.context7\]' "$CONFIG_FILE"; then
+      has_context7_legacy=1
     fi
-  done
 
-  has_context7_legacy=0
-  has_context7_current=0
+    if search_file '^\[mcp_servers\.context7-mcp\]' "$CONFIG_FILE"; then
+      has_context7_current=1
+    fi
 
-  if search_file '^\[mcp_servers\.context7\]' "$CONFIG_FILE"; then
-    has_context7_legacy=1
-  fi
+    if [[ "$has_context7_legacy" -eq 1 || "$has_context7_current" -eq 1 ]]; then
+      ok "MCP section [mcp_servers.context7] or [mcp_servers.context7-mcp] exists"
+    else
+      fail "MCP section [mcp_servers.context7] or [mcp_servers.context7-mcp] missing"
+    fi
 
-  if search_file '^\[mcp_servers\.context7-mcp\]' "$CONFIG_FILE"; then
-    has_context7_current=1
-  fi
-
-  if [[ "$has_context7_legacy" -eq 1 || "$has_context7_current" -eq 1 ]]; then
-    ok "MCP section [mcp_servers.context7] or [mcp_servers.context7-mcp] exists"
+    if [[ "$has_context7_legacy" -eq 1 && "$has_context7_current" -eq 1 ]]; then
+      warn "Both [mcp_servers.context7] and [mcp_servers.context7-mcp] exist; prefer one name"
+    fi
   else
-    fail "MCP section [mcp_servers.context7] or [mcp_servers.context7-mcp] missing"
-  fi
-
-  if [[ "$has_context7_legacy" -eq 1 && "$has_context7_current" -eq 1 ]]; then
-    warn "Both [mcp_servers.context7] and [mcp_servers.context7-mcp] exist; prefer one name"
+    warn "MCP presence checks skipped (ECC_EXPECT_MCP_SERVERS is disabled)"
   fi
 fi
 

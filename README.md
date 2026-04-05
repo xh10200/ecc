@@ -1020,17 +1020,22 @@ ECC provides **first-class Codex support** for both the macOS app and CLI, with 
 # Run Codex CLI in the repo — AGENTS.md and .codex/ are auto-detected
 codex
 
-# Automatic setup: sync ECC assets (AGENTS.md, skills, MCP servers) into ~/.codex
+# Automatic setup: sync ECC assets (AGENTS.md, prompts, agents, hooks) into ~/.codex
 npm install && bash scripts/sync-ecc-to-codex.sh
 # or: pnpm install && bash scripts/sync-ecc-to-codex.sh
 # or: yarn install && bash scripts/sync-ecc-to-codex.sh
 # or: bun install && bash scripts/sync-ecc-to-codex.sh
 
+# Optional: also merge the ECC-managed MCP servers
+bash scripts/sync-ecc-to-codex.sh --with-mcp
+# Optional: force-refresh ECC-managed MCP servers
+bash scripts/sync-ecc-to-codex.sh --with-mcp --update-mcp
+
 # Or manually: copy the reference config to your home directory
 cp .codex/config.toml ~/.codex/config.toml
 ```
 
-The sync script safely merges ECC MCP servers into your existing `~/.codex/config.toml` using an **add-only** strategy — it never removes or modifies your existing servers. Run with `--dry-run` to preview changes, or `--update-mcp` to force-refresh ECC servers to the latest recommended config.
+The sync script skips ECC-managed MCP servers by default. If you opt in with `--with-mcp`, it safely merges them into your existing `~/.codex/config.toml` using an **add-only** strategy — it never removes or modifies your existing servers. Run with `--dry-run` to preview changes, or `--with-mcp --update-mcp` to force-refresh ECC servers to the latest recommended config.
 
 For Context7, ECC uses the canonical Codex section name `[mcp_servers.context7]` while still launching the `@upstash/context7-mcp` package. If you already have a legacy `[mcp_servers.context7-mcp]` entry, `--update-mcp` migrates it to the canonical section name.
 
