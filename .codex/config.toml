@@ -115,6 +115,66 @@ config_file = "agents/explorer.toml"
 description = "PR reviewer focused on correctness, security, and missing tests."
 config_file = "agents/reviewer.toml"
 
-[agents.docs_researcher]
-description = "Documentation specialist that verifies APIs, framework behavior, and release notes."
-config_file = "agents/docs-researcher.toml"
+[agents.architect]
+description = "Software architecture specialist for system design, scalability, and technical decision-making. Use PROACTIVELY when planning new features, refactoring large systems, or making architectural decisions."
+config_file = "agents/architect.toml"
+
+[agents.build-error-resolver]
+description = "Build and TypeScript error resolution specialist. Use PROACTIVELY when build fails or type errors occur. Fixes build/type errors only with minimal diffs, no architectural edits. Focuses on getting the build green quickly."
+config_file = "agents/build-error-resolver.toml"
+
+[agents.code-reviewer]
+description = "Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes."
+config_file = "agents/code-reviewer.toml"
+
+[agents.database-reviewer]
+description = "PostgreSQL database specialist for query optimization, schema design, security, and performance. Use PROACTIVELY when writing SQL, creating migrations, designing schemas, or troubleshooting database performance."
+config_file = "agents/database-reviewer.toml"
+
+[agents.e2e-runner]
+description = "End-to-end testing specialist for local Playwright workflows. Use PROACTIVELY for generating, maintaining, and running E2E tests against local applications and critical user flows."
+config_file = "agents/e2e-runner.toml"
+
+[agents.gan-evaluator]
+description = "GAN Harness - Evaluator agent. Tests the live running application via Playwright, scores against rubric, and provides actionable feedback to the Generator."
+config_file = "agents/gan-evaluator.toml"
+
+[agents.gan-generator]
+description = "GAN Harness - Generator agent. Implements features according to the spec, reads evaluator feedback, and iterates until quality threshold is met."
+config_file = "agents/gan-generator.toml"
+
+[agents.gan-planner]
+description = "GAN Harness - Planner agent. Expands a one-line prompt into a full product specification with features, sprints, evaluation criteria, and design direction."
+config_file = "agents/gan-planner.toml"
+
+[agents.go-build-resolver]
+description = "Go build, vet, and compilation error resolution specialist. Fixes build errors, go vet issues, and linter warnings with minimal changes. Use when Go builds fail."
+config_file = "agents/go-build-resolver.toml"
+
+[agents.go-reviewer]
+description = "Expert Go code reviewer specializing in idiomatic Go, concurrency patterns, error handling, and performance. Use for all Go code changes. MUST BE USED for Go projects."
+config_file = "agents/go-reviewer.toml"
+
+[agents.planner]
+description = "Expert planning specialist for complex features and refactoring. Use PROACTIVELY when users request feature implementation, architectural changes, or complex refactoring. Automatically activated for planning tasks."
+config_file = "agents/planner.toml"
+
+[agents.python-reviewer]
+description = "Expert Python code reviewer specializing in PEP 8 compliance, Pythonic idioms, type hints, security, and performance. Use for all Python code changes. MUST BE USED for Python projects."
+config_file = "agents/python-reviewer.toml"
+
+[agents.refactor-cleaner]
+description = "Dead code cleanup and consolidation specialist. Use PROACTIVELY for removing unused code, duplicates, and refactoring. Runs analysis tools (knip, depcheck, ts-prune) to identify dead code and safely removes it."
+config_file = "agents/refactor-cleaner.toml"
+
+[agents.security-reviewer]
+description = "Security vulnerability detection and remediation specialist. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. Flags secrets, SSRF, injection, unsafe crypto, and OWASP Top 10 vulnerabilities."
+config_file = "agents/security-reviewer.toml"
+
+[agents.tdd-guide]
+description = "Test-Driven Development specialist enforcing write-tests-first methodology. Use PROACTIVELY when writing new features, fixing bugs, or refactoring code. Ensures 80%+ test coverage."
+config_file = "agents/tdd-guide.toml"
+
+[agents.typescript-reviewer]
+description = "Expert TypeScript/JavaScript code reviewer specializing in type safety, async correctness, Node/web security, and idiomatic patterns. Use for all TypeScript and JavaScript code changes. MUST BE USED for TypeScript/JavaScript projects."
+config_file = "agents/typescript-reviewer.toml"
