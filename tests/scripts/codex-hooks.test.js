@@ -12,6 +12,7 @@ const TOML = require('@iarna/toml');
 const repoRoot = path.join(__dirname, '..', '..');
 const installScript = path.join(repoRoot, 'scripts', 'codex', 'install-global-git-hooks.sh');
 const syncScript = path.join(repoRoot, 'scripts', 'sync-ecc-to-codex.sh');
+const prePushHook = path.join(repoRoot, 'scripts', 'codex-git-hooks', 'pre-push');
 
 function test(name, fn) {
   try {
@@ -64,6 +65,20 @@ function makeHermeticCodexEnv(homeDir, codexDir, extraEnv = {}) {
   };
 }
 
+function resolveCommandPath(command) {
+  const shell = process.env.SHELL || '/bin/bash';
+  const result = spawnSync(shell, ['-lc', `command -v ${command}`], {
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  if (result.status !== 0) {
+    throw new Error(`Unable to resolve command path for ${command}`);
+  }
+
+  return result.stdout.trim();
+}
+
 let passed = 0;
 let failed = 0;
 
@@ -87,6 +102,77 @@ if (os.platform() === 'win32') {
       assert.ok(fs.existsSync(path.join(weirdHooksDir, 'pre-push')));
     } finally {
       cleanup(homeDir);
+    }
+  })
+)
+  passed++;
+else failed++;
+
+if (os.platform() === 'win32') {
+  console.log('  - pre-push falls back to npm when preferred package manager is unavailable (skipped on Windows)');
+} else if (
+  test('pre-push falls back to npm when the preferred package manager is unavailable', () => {
+    const repoDir = createTempDir('codex-pre-push-repo-');
+    const binDir = path.join(repoDir, 'bin');
+    const shell = process.env.SHELL || '/bin/bash';
+
+    try {
+      fs.mkdirSync(path.join(repoDir, '.claude'), { recursive: true });
+      fs.mkdirSync(binDir, { recursive: true });
+
+      fs.writeFileSync(
+        path.join(repoDir, 'package.json'),
+        JSON.stringify({
+          name: 'hook-fallback-test',
+          version: '1.0.0',
+          scripts: {
+            lint: 'node -e "process.exit(0)"'
+          }
+        }, null, 2)
+      );
+      fs.writeFileSync(path.join(repoDir, 'package-lock.json'), '{}\n');
+      fs.writeFileSync(path.join(repoDir, 'yarn.lock'), '# test lockfile\n');
+      fs.writeFileSync(
+        path.join(repoDir, '.claude', 'package-manager.json'),
+        JSON.stringify({ packageManager: 'bun' }, null, 2)
+      );
+
+      const initResult = spawnSync('git', ['init'], {
+        cwd: repoDir,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      assert.strictEqual(initResult.status, 0, initResult.stderr || initResult.stdout);
+
+      for (const [name, target] of [
+        ['env', resolveCommandPath('env')],
+        ['git', resolveCommandPath('git')],
+        ['node', process.execPath],
+        ['npm', resolveCommandPath('npm')],
+        ['sh', resolveCommandPath('sh')],
+      ]) {
+        fs.symlinkSync(target, path.join(binDir, name));
+      }
+
+      const hookResult = spawnSync(shell, [prePushHook], {
+        cwd: repoDir,
+        env: {
+          ...process.env,
+          PATH: binDir,
+          LANG: 'C.UTF-8',
+          LC_ALL: 'C.UTF-8',
+        },
+        input: 'refs/heads/main 1111111111111111111111111111111111111111 refs/heads/main 0000000000000000000000000000000000000000\n',
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      assert.strictEqual(hookResult.status, 0, hookResult.stderr || hookResult.stdout);
+      assert.ok(hookResult.stdout.includes("Preferred package manager 'bun' (project-config) is unavailable. Falling back to 'npm'."));
+      assert.ok(hookResult.stdout.includes('Running: lint'));
+      assert.ok(hookResult.stdout.includes('Verification checks passed.'));
+    } finally {
+      cleanup(repoDir);
     }
   })
 )

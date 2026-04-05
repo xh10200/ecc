@@ -31,6 +31,8 @@ if [[ "$is_delete_only" == "true" ]]; then
 fi
 
 ran_any_check=0
+PREFERRED_PM=""
+PREFERRED_PM_SOURCE="default"
 
 log() {
   printf '[ECC pre-push] %s\n' "$*"
@@ -41,18 +43,109 @@ fail() {
   exit 1
 }
 
-detect_pm() {
-  if [[ -f "pnpm-lock.yaml" ]]; then
-    echo "pnpm"
-  elif [[ -f "bun.lockb" ]]; then
-    echo "bun"
-  elif [[ -f "yarn.lock" ]]; then
-    echo "yarn"
-  elif [[ -f "package-lock.json" ]]; then
-    echo "npm"
-  else
-    echo "npm"
+pm_exists() {
+  local pm="$1"
+  command -v "$pm" >/dev/null 2>&1
+}
+
+read_project_pm_config() {
+  [[ -f ".claude/package-manager.json" ]] || return 1
+  node -e '
+    const fs = require("fs");
+    try {
+      const data = JSON.parse(fs.readFileSync(".claude/package-manager.json", "utf8"));
+      const pm = data && data.packageManager;
+      if (/^(npm|pnpm|yarn|bun)$/.test(pm)) {
+        process.stdout.write(pm);
+      } else {
+        process.exit(1);
+      }
+    } catch {
+      process.exit(1);
+    }
+  ' 2>/dev/null
+}
+
+read_package_json_pm() {
+  [[ -f "package.json" ]] || return 1
+  node -e '
+    const fs = require("fs");
+    try {
+      const data = JSON.parse(fs.readFileSync("package.json", "utf8"));
+      const raw = data && data.packageManager;
+      const pm = typeof raw === "string" ? raw.split("@")[0] : "";
+      if (/^(npm|pnpm|yarn|bun)$/.test(pm)) {
+        process.stdout.write(pm);
+      } else {
+        process.exit(1);
+      }
+    } catch {
+      process.exit(1);
+    }
+  ' 2>/dev/null
+}
+
+detect_preferred_pm() {
+  local pm=""
+
+  if [[ "${CLAUDE_PACKAGE_MANAGER:-}" =~ ^(npm|pnpm|yarn|bun)$ ]]; then
+    PREFERRED_PM="${CLAUDE_PACKAGE_MANAGER}"
+    PREFERRED_PM_SOURCE="environment"
+    return
   fi
+
+  pm="$(read_project_pm_config || true)"
+  if [[ "$pm" =~ ^(npm|pnpm|yarn|bun)$ ]]; then
+    PREFERRED_PM="$pm"
+    PREFERRED_PM_SOURCE="project-config"
+    return
+  fi
+
+  pm="$(read_package_json_pm || true)"
+  if [[ "$pm" =~ ^(npm|pnpm|yarn|bun)$ ]]; then
+    PREFERRED_PM="$pm"
+    PREFERRED_PM_SOURCE="package.json"
+    return
+  fi
+
+  if [[ -f "pnpm-lock.yaml" ]]; then
+    PREFERRED_PM="pnpm"
+    PREFERRED_PM_SOURCE="lock-file"
+  elif [[ -f "bun.lockb" ]]; then
+    PREFERRED_PM="bun"
+    PREFERRED_PM_SOURCE="lock-file"
+  elif [[ -f "yarn.lock" ]]; then
+    PREFERRED_PM="yarn"
+    PREFERRED_PM_SOURCE="lock-file"
+  elif [[ -f "package-lock.json" ]]; then
+    PREFERRED_PM="npm"
+    PREFERRED_PM_SOURCE="lock-file"
+  else
+    PREFERRED_PM="npm"
+    PREFERRED_PM_SOURCE="default"
+  fi
+}
+
+resolve_pm() {
+  local preferred="$1"
+  local candidate
+
+  if [[ -n "$preferred" ]] && pm_exists "$preferred"; then
+    echo "$preferred"
+    return 0
+  fi
+
+  for candidate in npm pnpm yarn bun; do
+    if [[ "$candidate" == "$preferred" ]]; then
+      continue
+    fi
+    if pm_exists "$candidate"; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 has_node_script() {
@@ -73,29 +166,38 @@ run_node_script() {
 }
 
 if [[ -f "package.json" ]]; then
-  pm="$(detect_pm)"
-  log "Node project detected (package manager: $pm)"
+  detect_preferred_pm
+  pm="$(resolve_pm "$PREFERRED_PM" || true)"
 
-  for script_name in lint typecheck test build; do
-    if has_node_script "$script_name"; then
-      ran_any_check=1
-      log "Running: $script_name"
-      run_node_script "$pm" "$script_name" || fail "$script_name failed"
-    else
-      log "Skipping missing script: $script_name"
+  if [[ -z "$pm" ]]; then
+    log "Node project detected but no supported package manager is installed. Skipping Node checks."
+  else
+    if [[ "$pm" != "$PREFERRED_PM" ]]; then
+      log "Preferred package manager '$PREFERRED_PM' ($PREFERRED_PM_SOURCE) is unavailable. Falling back to '$pm'."
     fi
-  done
+    log "Node project detected (package manager: $pm)"
 
-  if [[ "${ECC_PREPUSH_AUDIT:-0}" == "1" ]]; then
-    ran_any_check=1
-    log "Running dependency audit (ECC_PREPUSH_AUDIT=1)"
-    case "$pm" in
-      pnpm) pnpm audit --prod || fail "pnpm audit failed" ;;
-      bun) bun audit || fail "bun audit failed" ;;
-      yarn) yarn npm audit --recursive || fail "yarn audit failed" ;;
-      npm) npm audit --omit=dev || fail "npm audit failed" ;;
-      *) npm audit --omit=dev || fail "npm audit failed" ;;
-    esac
+    for script_name in lint typecheck test build; do
+      if has_node_script "$script_name"; then
+        ran_any_check=1
+        log "Running: $script_name"
+        run_node_script "$pm" "$script_name" || fail "$script_name failed"
+      else
+        log "Skipping missing script: $script_name"
+      fi
+    done
+
+    if [[ "${ECC_PREPUSH_AUDIT:-0}" == "1" ]]; then
+      ran_any_check=1
+      log "Running dependency audit (ECC_PREPUSH_AUDIT=1)"
+      case "$pm" in
+        pnpm) pnpm audit --prod || fail "pnpm audit failed" ;;
+        bun) bun audit || fail "bun audit failed" ;;
+        yarn) yarn npm audit --recursive || fail "yarn audit failed" ;;
+        npm) npm audit --omit=dev || fail "npm audit failed" ;;
+        *) npm audit --omit=dev || fail "npm audit failed" ;;
+      esac
+    fi
   fi
 fi
 
