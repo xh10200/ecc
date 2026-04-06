@@ -154,7 +154,7 @@ require_path "$AGENTS_CODEX_SUPP_SRC" "ECC Codex AGENTS supplement"
 require_path "$CODEX_AGENTS_SRC" "ECC Codex agent roles"
 require_path "$PROMPTS_SRC" "ECC commands directory"
 require_path "$BASELINE_MERGE_SCRIPT" "ECC Codex baseline merge script"
-require_path "$HOOKS_INSTALLER" "ECC global git hooks installer"
+# require_path "$HOOKS_INSTALLER" "ECC global git hooks installer"
 require_path "$SANITY_CHECKER" "ECC global sanity checker"
 require_path "$CURSOR_RULES_DIR" "ECC Cursor rules directory"
 require_path "$CONFIG_FILE" "Codex config.toml"
@@ -505,20 +505,23 @@ else
   log "Skipping ECC MCP sync (disabled by default; pass --with-mcp to enable)"
 fi
 
-log "Installing global git safety hooks"
-if [[ "$MODE" == "dry-run" ]]; then
-  HOME="$HOME" \
-  CODEX_HOME="$CODEX_HOME" \
-  AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
-  ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
-    "$HOOKS_INSTALLER" --dry-run
-else
-  HOME="$HOME" \
-  CODEX_HOME="$CODEX_HOME" \
-  AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
-  ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
-    "$HOOKS_INSTALLER"
-fi
+# Git hook installation is intentionally disabled in this local variant.
+# Keep the original block commented for easy re-enable later.
+# log "Installing global git safety hooks"
+# if [[ "$MODE" == "dry-run" ]]; then
+#   HOME="$HOME" \
+#   CODEX_HOME="$CODEX_HOME" \
+#   AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
+#   ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
+#     "$HOOKS_INSTALLER" --dry-run
+# else
+#   HOME="$HOME" \
+#   CODEX_HOME="$CODEX_HOME" \
+#   AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
+#   ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
+#     "$HOOKS_INSTALLER"
+# fi
+log "Skipping global git safety hooks install (disabled locally)"
 
 log "Running global regression sanity check"
 if [[ "$MODE" == "dry-run" ]]; then
@@ -528,6 +531,7 @@ else
   CODEX_HOME="$CODEX_HOME" \
   AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
   ECC_EXPECT_MCP_SERVERS="$ENABLE_MCP" \
+  ECC_EXPECT_GIT_HOOKS="0" \
   ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
     "$SANITY_CHECKER"
 fi

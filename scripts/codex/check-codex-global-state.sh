@@ -29,6 +29,13 @@ expect_mcp_servers() {
   esac
 }
 
+expect_git_hooks() {
+  case "${ECC_EXPECT_GIT_HOOKS:-1}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 failures=0
 warnings=0
 checks=0
@@ -211,27 +218,31 @@ else
   fail "ECC prompts count is $command_prompts_count (expected >= 43)"
 fi
 
-hooks_path="$(git config --global --get core.hooksPath || true)"
-if [[ -n "$hooks_path" ]]; then
-  if [[ "$hooks_path" == "$HOOKS_DIR_EXPECT" ]]; then
-    ok "Global hooksPath is set to $HOOKS_DIR_EXPECT"
+if expect_git_hooks; then
+  hooks_path="$(git config --global --get core.hooksPath || true)"
+  if [[ -n "$hooks_path" ]]; then
+    if [[ "$hooks_path" == "$HOOKS_DIR_EXPECT" ]]; then
+      ok "Global hooksPath is set to $HOOKS_DIR_EXPECT"
+    else
+      warn "Global hooksPath is $hooks_path (expected $HOOKS_DIR_EXPECT)"
+    fi
   else
-    warn "Global hooksPath is $hooks_path (expected $HOOKS_DIR_EXPECT)"
+    fail "Global hooksPath is not configured"
+  fi
+
+  if [[ -x "$HOOKS_DIR_EXPECT/pre-commit" ]]; then
+    ok "Global pre-commit hook is installed and executable"
+  else
+    fail "Global pre-commit hook missing or not executable"
+  fi
+
+  if [[ -x "$HOOKS_DIR_EXPECT/pre-push" ]]; then
+    ok "Global pre-push hook is installed and executable"
+  else
+    fail "Global pre-push hook missing or not executable"
   fi
 else
-  fail "Global hooksPath is not configured"
-fi
-
-if [[ -x "$HOOKS_DIR_EXPECT/pre-commit" ]]; then
-  ok "Global pre-commit hook is installed and executable"
-else
-  fail "Global pre-commit hook missing or not executable"
-fi
-
-if [[ -x "$HOOKS_DIR_EXPECT/pre-push" ]]; then
-  ok "Global pre-push hook is installed and executable"
-else
-  fail "Global pre-push hook missing or not executable"
+  warn "Git hooks checks skipped (ECC_EXPECT_GIT_HOOKS is disabled)"
 fi
 
 if command -v ecc-sync-codex >/dev/null 2>&1; then
