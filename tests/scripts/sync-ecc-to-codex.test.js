@@ -88,6 +88,10 @@ function runTests() {
     assert.ok(source.includes('Skipping ECC MCP sync (disabled by default; pass --with-mcp to enable)'), 'Expected default MCP skip message');
   })) passed++; else failed++;
 
+  if (test('sync script disables PATH command warnings during sanity check', () => {
+    assert.ok(source.includes('ECC_EXPECT_PATH_COMMANDS="0"'), 'Expected sync-ecc-to-codex.sh to disable PATH command checks during sync');
+  })) passed++; else failed++;
+
   console.log(`\nResults: Passed: ${passed}, Failed: ${failed}`);
   process.exit(failed > 0 ? 1 : 0);
 }

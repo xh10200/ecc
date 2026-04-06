@@ -19,7 +19,9 @@ fi
 CONFIG_FILE="$CODEX_HOME/config.toml"
 AGENTS_FILE="$CODEX_HOME/AGENTS.md"
 PROMPTS_DIR="$CODEX_HOME/prompts"
-SKILLS_DIR="${AGENTS_HOME:-$HOME/.agents}/skills"
+LEGACY_SKILLS_DIR="${AGENTS_HOME:-$HOME/.agents}/skills"
+CODEX_AGENT_SKILLS_DIR="$CODEX_HOME/.agents/skills"
+CODEX_SKILLS_DIR="$CODEX_HOME/skills"
 HOOKS_DIR_EXPECT="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}"
 
 expect_mcp_servers() {
@@ -31,6 +33,13 @@ expect_mcp_servers() {
 
 expect_git_hooks() {
   case "${ECC_EXPECT_GIT_HOOKS:-1}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+expect_path_commands() {
+  case "${ECC_EXPECT_PATH_COMMANDS:-1}" in
     1|true|TRUE|yes|YES|on|ON) return 0 ;;
     *) return 1 ;;
   esac
@@ -65,6 +74,22 @@ require_file() {
   else
     fail "$label missing ($file)"
   fi
+}
+
+join_by() {
+  local delimiter="$1"
+  shift
+  local first=1
+  local item
+
+  for item in "$@"; do
+    if [[ "$first" -eq 1 ]]; then
+      printf '%s' "$item"
+      first=0
+    else
+      printf '%s%s' "$delimiter" "$item"
+    fi
+  done
 }
 
 check_config_pattern() {
@@ -178,25 +203,44 @@ declare -a required_skills=(
   tdd-workflow
   verification-loop
 )
+declare -a skill_roots=()
+declare -a skill_roots_checked=(
+  "$CODEX_AGENT_SKILLS_DIR"
+  "$CODEX_SKILLS_DIR"
+  "$LEGACY_SKILLS_DIR"
+)
 
-if [[ -d "$SKILLS_DIR" ]]; then
+for skill_root in "${skill_roots_checked[@]}"; do
+  if [[ -d "$skill_root" ]]; then
+    skill_roots+=("$skill_root")
+  fi
+done
+
+if [[ "${#skill_roots[@]}" -gt 0 ]]; then
   missing_skills=0
   for skill in "${required_skills[@]}"; do
-    if [[ -d "$SKILLS_DIR/$skill" ]]; then
-      :
-    else
+    found_skill=0
+    for skill_root in "${skill_roots[@]}"; do
+      if [[ -d "$skill_root/$skill" ]]; then
+        found_skill=1
+        break
+      fi
+    done
+
+    if [[ "$found_skill" -eq 0 ]]; then
       printf '  - missing skill: %s\n' "$skill"
       missing_skills=$((missing_skills + 1))
     fi
   done
 
+  skills_summary="$(join_by ', ' "${skill_roots[@]}")"
   if [[ "$missing_skills" -eq 0 ]]; then
-    ok "All 16 ECC skills are present in $SKILLS_DIR"
+    ok "All 16 ECC skills are present across: $skills_summary"
   else
-    warn "$missing_skills ECC skills missing from $SKILLS_DIR (install via ECC installer or npx skills)"
+    warn "$missing_skills ECC skills missing across: $skills_summary"
   fi
 else
-  warn "Skills directory missing ($SKILLS_DIR) — install via ECC installer or npx skills"
+  warn "No skills directories found (checked: $(join_by ', ' "${skill_roots_checked[@]}")) — install via ECC installer"
 fi
 
 if [[ -f "$PROMPTS_DIR/ecc-prompts-manifest.txt" ]]; then
@@ -245,22 +289,26 @@ else
   warn "Git hooks checks skipped (ECC_EXPECT_GIT_HOOKS is disabled)"
 fi
 
-if command -v ecc-sync-codex >/dev/null 2>&1; then
-  ok "ecc-sync-codex command is in PATH"
-else
-  warn "ecc-sync-codex is not in PATH"
-fi
+if expect_path_commands; then
+  if command -v ecc-sync-codex >/dev/null 2>&1; then
+    ok "ecc-sync-codex command is in PATH"
+  else
+    warn "ecc-sync-codex is not in PATH"
+  fi
 
-if command -v ecc-install-git-hooks >/dev/null 2>&1; then
-  ok "ecc-install-git-hooks command is in PATH"
-else
-  warn "ecc-install-git-hooks is not in PATH"
-fi
+  if command -v ecc-install-git-hooks >/dev/null 2>&1; then
+    ok "ecc-install-git-hooks command is in PATH"
+  else
+    warn "ecc-install-git-hooks is not in PATH"
+  fi
 
-if command -v ecc-check-codex >/dev/null 2>&1; then
-  ok "ecc-check-codex command is in PATH"
+  if command -v ecc-check-codex >/dev/null 2>&1; then
+    ok "ecc-check-codex command is in PATH"
+  else
+    warn "ecc-check-codex is not in PATH (this is expected before alias setup)"
+  fi
 else
-  warn "ecc-check-codex is not in PATH (this is expected before alias setup)"
+  ok "PATH command checks skipped (ECC_EXPECT_PATH_COMMANDS is disabled)"
 fi
 
 printf '\nSummary: checks=%d, warnings=%d, failures=%d\n' "$checks" "$warnings" "$failures"

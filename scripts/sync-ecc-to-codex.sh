@@ -274,9 +274,11 @@ for agent_file in "$CODEX_AGENTS_SRC"/*.toml; do
   fi
 done
 
-# Skills are NOT synced here — Codex CLI reads directly from
-# ~/.agents/skills/ (installed by ECC installer / npx skills).
-# Copying into ~/.codex/skills/ was unnecessary.
+# Skills are NOT synced here.
+# Codex skill content is installed separately by the ECC installer and may live
+# under ~/.codex/.agents/skills and ~/.codex/skills depending on the install
+# target/profile. This sync script only handles Codex config, prompts, and
+# agent-role scaffolding.
 
 log "Generating prompt files from ECC commands"
 run_or_echo mkdir -p "$PROMPTS_DEST"
@@ -532,6 +534,7 @@ else
   AGENTS_HOME="${AGENTS_HOME:-$HOME/.agents}" \
   ECC_EXPECT_MCP_SERVERS="$ENABLE_MCP" \
   ECC_EXPECT_GIT_HOOKS="0" \
+  ECC_EXPECT_PATH_COMMANDS="0" \
   ECC_GLOBAL_HOOKS_DIR="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}" \
     "$SANITY_CHECKER"
 fi
